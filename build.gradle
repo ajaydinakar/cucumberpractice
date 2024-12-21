@@ -1,0 +1,74 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.3.5'
+	id 'io.spring.dependency-management' version '1.1.6'
+}
+
+group = 'com.ajay'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(17)
+	}
+}
+configurations {
+	integration_testImplementation.extendsFrom(testImplementation)
+	integration_testRuntimeOnly.extendsFrom(testRuntimeOnly)
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+sourceSets {
+	integration_test {
+		java {
+			compileClasspath += main.output + test.output
+			runtimeClasspath += main.output + test.output
+		}
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'io.cucumber:cucumber-java:7.20.1'
+	testImplementation group: 'io.cucumber', name: 'cucumber-junit', version: '7.20.1'
+	testImplementation group: 'org.junit.platform', name: 'junit-platform-suite-api', version: '1.11.3'
+	testImplementation group: 'io.cucumber', name: 'cucumber-junit-platform-engine', version: '7.20.1'
+// https://mvnrepository.com/artifact/org.apache.tomcat.embed/tomcat-embed-jasper
+	implementation group: 'org.apache.tomcat.embed', name: 'tomcat-embed-jasper', version: '10.1.33'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+	filter {
+		failOnNoMatchingTests false
+	}
+	testLogging {
+		showExceptions = true
+		showStandardStreams = true
+		exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+	}
+}
+
+task integrationTest(type: Test) {
+	dependsOn assemble, testClasses
+	doLast {
+		javaexec {
+			main = "io.cucumber.core.cli.Main"
+			testClassesDirs = sourceSets.integration_test.output.classesDirs
+			classpath = sourceSets.integration_test.runtimeClasspath
+			args = [
+					'--plugin', 'pretty',
+					'--plugin', 'html:target/cucumber-report.html',
+					'--glue', 'com.ajay.cucumberpractice',
+					'src/test/resources/features']
+		}
+	}
+}
